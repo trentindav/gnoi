@@ -57,13 +57,13 @@ as well as List the currently installed ones.
 
 Usage examples:
 # Connect in insecure mode (TCP) and install cert/key pair into the target
-$ gnoi_client -alsologtostderr -target 10.0.0.5:10161 -operation install -targetCert server.crt -targetKey server.key
+$ gnoi_cert -alsologtostderr -target 10.0.0.5:10161 -operation install -targetCert server.crt -targetKey server.key
 
 # Connect with TLS and list all installed certificates
-$ gnoi_client -alsologtostderr -target 10.0.0.5:10161 -operation get -tls -cert client.crt -key client.key -ca ca.crt
+$ gnoi_cert -alsologtostderr -target 10.0.0.5:10161 -operation get -tls -cert client.crt -key client.key -ca ca.crt
 
 # Connect with TLS and revoke the certificate identified by 'certificate_id'
-$ gnoi_client -alsologtostderr -target 10.0.0.5:10161 -operation revoke -tls -cert client.crt -key client.key -ca ca.crt -targetCertId gnxi
+$ gnoi_cert -alsologtostderr -target 10.0.0.5:10161 -operation revoke -tls -cert client.crt -key client.key -ca ca.crt -targetCertId gnxi
 
 `
 		fmt.Fprintf(os.Stderr, usage)
