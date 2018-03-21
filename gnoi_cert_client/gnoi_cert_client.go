@@ -1,10 +1,11 @@
-/* Copyright 2017 NoviFlow Inc.
+/*
+Copyright 2018 Davide Trentin
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    https://www.apache.org/licenses/LICENSE-2.0
+		http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,14 +24,12 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
-	//"strings"
 
 	log "github.com/golang/glog"
 	"github.com/google/gnxi/utils"
 	"github.com/google/gnxi/utils/credentials"
-	"golang.org/x/net/context"
-	// "github.com/google/gnxi/utils/credentials"
 	pb "github.com/openconfig/gnoi/cert"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -52,7 +51,7 @@ func check(msg string, e error) {
 
 func main() {
 	flag.Usage = func() {
-		usage := `gNOI Client example.
+		usage := `gNOI Client Example
 It can be used to Install and Revoke certificates into the target,
 as well as List the currently installed ones.
 
@@ -140,20 +139,6 @@ $ gnoi_client -alsologtostderr -target 10.0.0.5:10161 -operation revoke -tls -ce
 		stream.CloseSend()
 		<-waitc
 	} else if *operation == "revoke" {
-		// rpc RevokeCertificates(RevokeCertificatesRequest)
-		//     returns (RevokeCertificatesResponse);
-		// message RevokeCertificatesRequest {
-		//   // Certificates to revoke.
-		//   repeated string certificate_id = 1;
-		// }
-		//
-		// message RevokeCertificatesResponse {
-		//   // List of certificates successfully revoked.
-		//   repeated string revoked_certificate_id = 1;
-		//
-		//   // List of errors why certain certificates could not be revoked.
-		//   repeated CertificateRevocationError certificate_revocation_error = 2;
-		// }
 		revokeRequest := &pb.RevokeCertificatesRequest{
 			CertificateId: []string{*targetCertId},
 		}
