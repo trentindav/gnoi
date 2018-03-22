@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Davide Trentin
+Copyright 2018 NoviFlow Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,6 +49,70 @@ func check(msg string, e error) {
 	}
 }
 
+func get(ctx context.Context, cli pb.CertificateManagementClient) {
+	getCertificatesRequest := &pb.GetCertificatesRequest{}
+	response, err := cli.GetCertificates(ctx, getCertificatesRequest)
+	check("Get Certificates failed", err)
+	log.Info(len(response.CertificateInfo),
+		" certificate(s) in GetCertificateResponse")
+	utils.PrintProto(response)
+}
+
+func install(ctx context.Context, cli pb.CertificateManagementClient) {
+	datCert, err := ioutil.ReadFile(*targetCert)
+	check(fmt.Sprintf("Problem reading target certificate %v", *targetCert), err)
+	cert := &pb.Certificate{
+		Type:        pb.CertificateType_CT_X509,
+		Certificate: datCert,
+	}
+	datKey, err := ioutil.ReadFile(*targetKey)
+	check(fmt.Sprintf("Problem reading target key %v", *targetKey), err)
+	privKey := &pb.KeyPair{
+		PrivateKey: datKey,
+	}
+	loadCertReq := &pb.LoadCertificateRequest{
+		Certificate:   cert,
+		KeyPair:       privKey,
+		CertificateId: *targetCertId,
+	}
+	installReq := &pb.InstallCertificateRequest_LoadCertificate{
+		LoadCertificate: loadCertReq,
+	}
+	requests := []*pb.InstallCertificateRequest{
+		{InstallRequest: installReq},
+	}
+
+	stream, err := cli.Install(ctx)
+	waitc := make(chan struct{})
+	go func() {
+		for {
+			_, err := stream.Recv()
+			if err == io.EOF {
+				close(waitc)
+				return
+			}
+			check("Failed to receive a Install certificate response", err)
+			log.Info("Install certificate response : success")
+		}
+	}()
+	for _, req := range requests {
+		log.Info("Send Install certificate request")
+		err := stream.Send(req)
+		check("Install stream exception", err)
+	}
+	stream.CloseSend()
+	<-waitc
+}
+
+func revoke(ctx context.Context, cli pb.CertificateManagementClient) {
+	revokeRequest := &pb.RevokeCertificatesRequest{
+		CertificateId: []string{*targetCertId},
+	}
+	response, err := cli.RevokeCertificates(ctx, revokeRequest)
+	check("Problem Revoking certificates", err)
+	utils.PrintProto(response)
+}
+
 func main() {
 	flag.Usage = func() {
 		usage := `gNOI Client Example
@@ -87,66 +151,15 @@ $ gnoi_cert -alsologtostderr -target 10.0.0.5:10161 -operation revoke -tls -cert
 	cli := pb.NewCertificateManagementClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if *operation == "get" {
-		getCertificatesRequest := &pb.GetCertificatesRequest{}
-		response, err := cli.GetCertificates(ctx, getCertificatesRequest)
-		check("Get Certificates failed", err)
-		log.Info(len(response.CertificateInfo),
-			" certificate(s) in GetCertificateResponse")
-		utils.PrintProto(response)
-	} else if *operation == "install" {
-		datCert, err := ioutil.ReadFile(*targetCert)
-		check(fmt.Sprintf("Problem reading target certificate %v", *targetCert), err)
-		cert := &pb.Certificate{
-			Type:        pb.CertificateType_CT_X509,
-			Certificate: datCert,
-		}
-		datKey, err := ioutil.ReadFile(*targetKey)
-		check(fmt.Sprintf("Problem reading target key %v", *targetKey), err)
-		privKey := &pb.KeyPair{
-			PrivateKey: datKey,
-		}
-		loadCertReq := &pb.LoadCertificateRequest{
-			Certificate:   cert,
-			KeyPair:       privKey,
-			CertificateId: *targetCertId,
-		}
-		installReq := &pb.InstallCertificateRequest_LoadCertificate{
-			LoadCertificate: loadCertReq,
-		}
-		requests := []*pb.InstallCertificateRequest{
-			{InstallRequest: installReq},
-		}
-
-		stream, err := cli.Install(ctx)
-		waitc := make(chan struct{})
-		go func() {
-			for {
-				_, err := stream.Recv()
-				if err == io.EOF {
-					close(waitc)
-					return
-				}
-				check("Failed to receive a Install certificate response", err)
-				log.Info("Install certificate response : success")
-			}
-		}()
-		for _, req := range requests {
-			log.Info("Send Install certificate request")
-			err := stream.Send(req)
-			check("Install stream exception", err)
-		}
-		stream.CloseSend()
-		<-waitc
-	} else if *operation == "revoke" {
-		revokeRequest := &pb.RevokeCertificatesRequest{
-			CertificateId: []string{*targetCertId},
-		}
-		response, err := cli.RevokeCertificates(ctx, revokeRequest)
-		check("Problem Revoking certificates", err)
-		utils.PrintProto(response)
-
-	} else {
+	switch *operation {
+	case "get":
+		get(ctx, cli)
+	case "install":
+		install(ctx, cli)
+	case "revoke":
+		revoke(ctx, cli)
+	default:
 		log.Exitf("Invalid operation: %v", *operation)
 	}
+
 }
